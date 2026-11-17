@@ -89,9 +89,24 @@ Tests run on synthetic data with the same schema as the real dataset, so CI neve
 
 ## Evaluation results
 
-Held-out test set (the last 20% of transactions in time). Thresholds were chosen on the validation set and then frozen.
+Held-out test set: the last 20% of transactions in time (56,962 transactions, 75 frauds). Thresholds were chosen on the validation set and then frozen. Costs assume 5 per analyst review and at least 10 per missed fraud.
 
-_Results will be added after the first full training run._
+| Model | Val PR-AUC | Test PR-AUC | Test ROC-AUC | Recall | Precision | Alerts | Fraud amount caught | Cost | Saving vs no model |
+|---|---|---|---|---|---|---|---|---|---|
+| XGBoost | 0.778 | **0.795** | 0.978 | 0.760 | 0.781 | 73 | 65.9% | **3,061** | **62.2%** |
+| Logistic regression | 0.753 | 0.747 | 0.981 | 0.693 | 0.812 | 64 | 61.1% | 3,401 | 57.9% |
+| RBF SVM | 0.151 | 0.206 | 0.975 | 0.747 | 0.119 | 469 | 69.9% | 4,746 | 41.3% |
+
+**Findings**
+
+- XGBoost has the best ranking quality and the lowest business cost; logistic regression is a strong, interpretable baseline close behind.
+- The SVM shows why ROC-AUC is the wrong headline metric here: its ROC-AUC (0.975) is close to the other models, while its PR-AUC (0.206) and precision (0.119) reveal that most of its alerts are false. ROC-AUC is diluted by tens of thousands of easy true negatives.
+- Likely causes for the SVM, to be tested: imbalance corrected twice (undersampling plus balanced class weights), too few legitimate examples near the decision boundary after undersampling, and untuned `C` and `gamma`.
+- With 75 test frauds, one fraud is worth about 1.3 points of recall, so small gaps between models are within noise.
+- Fraud is unevenly spread over time (360 / 57 / 75 frauds across train / validation / test), which a random split would hide.
+- The data contains 1,081 duplicated rows, kept for now; whether they are genuine repeat transactions is an open question.
+
+Reproduce with `fraud-train --config configs/train.yaml` (seed 42).
 
 ## Project structure
 
@@ -117,6 +132,7 @@ _Results will be added after the first full training run._
 ## Roadmap
 
 - [x] Phase 1: validated, reproducible training pipeline with cost-based thresholds
+- [ ] Investigate and fix the SVM (single imbalance correction, tuned C and gamma)
 - [ ] Keras neural network and model comparison
 - [ ] SHAP explanations (global and per transaction)
 - [ ] MLflow experiment tracking

@@ -30,6 +30,7 @@ from fraud_detection.evaluation.threshold import (
 from fraud_detection.features.build import feature_columns
 from fraud_detection.models.factory import fit_model, predict_scores
 from fraud_detection.models.registry import save_model
+from fraud_detection.models.tuning import tune_on_validation
 
 logger = logging.getLogger("fraud_detection")
 
@@ -47,11 +48,22 @@ def train_and_evaluate(
     target, amount_col = config.data.target, config.data.amount_column
     columns = feature_columns(config.data.time_column, amount_col)
 
+    val, test = split.validation, split.test
     started = time.perf_counter()
+    trials: list[dict[str, Any]] = []
+    if params.get("grid"):
+        params, trials = tune_on_validation(
+            name,
+            params,
+            split.train[columns],
+            split.train[target],
+            val[columns],
+            val[target],
+            config.seed,
+        )
     model = fit_model(name, params, split.train[columns], split.train[target], config.seed)
     train_seconds = time.perf_counter() - started
 
-    val, test = split.validation, split.test
     val_scores = predict_scores(model, val[columns])
     test_scores = predict_scores(model, test[columns])
 
@@ -82,6 +94,7 @@ def train_and_evaluate(
         "model": name,
         "params": params,
         "train_seconds": round(train_seconds, 2),
+        "tuning": trials,
         "policy": policy.to_dict(),
         "validation": {
             **classification_metrics(val[target], val_scores, review_threshold, val[amount_col]),

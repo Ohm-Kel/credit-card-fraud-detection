@@ -93,16 +93,18 @@ Held-out test set: the last 20% of transactions in time (56,962 transactions, 75
 
 | Model | Val PR-AUC | Test PR-AUC | Test ROC-AUC | Recall | Precision | Alerts | Fraud amount caught | Cost | Saving vs no model |
 |---|---|---|---|---|---|---|---|---|---|
-| XGBoost | 0.778 | **0.795** | 0.978 | 0.760 | 0.781 | 73 | 65.9% | **3,061** | **62.2%** |
-| Logistic regression | 0.753 | 0.747 | 0.981 | 0.693 | 0.812 | 64 | 61.1% | 3,401 | 57.9% |
-| RBF SVM | 0.151 | 0.206 | 0.975 | 0.747 | 0.119 | 469 | 69.9% | 4,746 | 41.3% |
+| XGBoost | 0.778 | **0.795** | 0.978 | 0.760 | 0.781 | 73 | 65.9% | 3,061 | 62.2% |
+| RBF SVM (tuned, C=10, gamma=0.001) | 0.759 | 0.791 | 0.938 | 0.760 | 0.770 | 74 | **68.9%** | **2,839** | **64.9%** |
+| Logistic regression | 0.753 | 0.747 | 0.981 | 0.693 | **0.812** | 64 | 61.1% | 3,401 | 57.9% |
 
 **Findings**
 
-- XGBoost has the best ranking quality and the lowest business cost; logistic regression is a strong, interpretable baseline close behind.
-- The SVM shows why ROC-AUC is the wrong headline metric here: its ROC-AUC (0.975) is close to the other models, while its PR-AUC (0.206) and precision (0.119) reveal that most of its alerts are false. ROC-AUC is diluted by tens of thousands of easy true negatives.
-- Likely causes for the SVM, to be tested: imbalance corrected twice (undersampling plus balanced class weights), too few legitimate examples near the decision boundary after undersampling, and untuned `C` and `gamma`.
-- With 75 test frauds, one fraud is worth about 1.3 points of recall, so small gaps between models are within noise.
+- XGBoost has the best ranking quality (PR-AUC); the tuned SVM has the lowest business cost at its chosen threshold. Better overall ranking does not guarantee lower cost at a single operating point, and with 75 test frauds the gap between them is within noise.
+- **SVM fix ([ADR 0005](docs/adr/0005-svm-imbalance.md)).** The first SVM scored 0.975 ROC-AUC but only 0.206 PR-AUC, with 469 alerts at 11.9% precision. Class imbalance was corrected twice (undersampling plus balanced class weights) and `C` and `gamma` were untuned. Removing the class weights and tuning on validation PR-AUC raised test PR-AUC to 0.791, cut alerts to 74 and lowered cost from 4,746 to 2,839.
+- This is why PR-AUC is the headline metric: ROC-AUC barely moved between the broken and fixed SVM, because it is diluted by tens of thousands of easy true negatives.
+- The best SVM setting sits at the edge of the search grid, so a wider grid may improve it further.
+- Logistic regression and XGBoost gave identical results across runs, confirming the pipeline is reproducible with a fixed seed.
+- With 75 test frauds, one fraud is worth about 1.3 points of recall.
 - Fraud is unevenly spread over time (360 / 57 / 75 frauds across train / validation / test), which a random split would hide.
 - The data contains 1,081 duplicated rows, kept for now; whether they are genuine repeat transactions is an open question.
 
@@ -132,7 +134,8 @@ Reproduce with `fraud-train --config configs/train.yaml` (seed 42).
 ## Roadmap
 
 - [x] Phase 1: validated, reproducible training pipeline with cost-based thresholds
-- [ ] Investigate and fix the SVM (single imbalance correction, tuned C and gamma)
+- [x] Investigate and fix the SVM (single imbalance correction, tuned C and gamma)
+- [ ] Widen the SVM search grid (best setting is at the edge)
 - [ ] Keras neural network and model comparison
 - [ ] SHAP explanations (global and per transaction)
 - [ ] MLflow experiment tracking

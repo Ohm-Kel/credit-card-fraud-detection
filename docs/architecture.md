@@ -97,3 +97,4 @@ score < review_threshold                     -> approve
 - [ADR 0002: Single pipeline artifact](adr/0002-single-pipeline-artifact.md)
 - [ADR 0003: Metrics and cost-based thresholds](adr/0003-metrics-and-thresholds.md)
 - [ADR 0004: Model selection and class imbalance](adr/0004-model-selection.md)
+- [ADR 0005: SVM imbalance handling and tuning](adr/0005-svm-imbalance.md)

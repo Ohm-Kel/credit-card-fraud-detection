@@ -40,7 +40,7 @@ def config_file(tmp_path: Path, transactions: pd.DataFrame) -> Path:
         "decision": {"block_precision_target": 0.9},
         "models": {
             "logistic_regression": {"C": 1.0, "max_iter": 500},
-            "svm": {"C": 1.0, "kernel": "rbf", "negatives_per_positive": 10},
+            "svm": {"kernel": "rbf", "negatives_per_positive": 10, "grid": {"C": [0.1, 1.0]}},
             "xgboost": {"n_estimators": 50, "max_depth": 3, "learning_rate": 0.1},
         },
         "output": {

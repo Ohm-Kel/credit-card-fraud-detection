@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- SVM no longer corrects class imbalance twice (undersampling plus class weights)
+
+### Added
+- Validation-based hyperparameter search (`grid` in the model config), used for SVM C and gamma
+
 ### Added
 - Data validation, time-based split and shared preprocessing pipeline
 - Logistic regression, calibrated RBF SVM and XGBoost models

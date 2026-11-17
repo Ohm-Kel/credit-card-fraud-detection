@@ -1,0 +1,47 @@
+# Training configuration. Every run logs a copy of this file next to its artifacts.
+
+seed: 42
+
+data:
+  path: data/creditcard.csv
+  target: Class
+  time_column: Time
+  amount_column: Amount
+
+split:
+  # Time-ordered split (see docs/adr/0001-time-based-split.md)
+  train_fraction: 0.6
+  validation_fraction: 0.2
+  # the remaining 0.2 is the held-out test set
+
+costs:
+  # Cost-based threshold selection (see docs/adr/0003-metrics-and-thresholds.md)
+  # A missed fraud costs the transaction amount; every alert costs an analyst review.
+  review_cost: 5.0
+  min_fraud_cost: 10.0
+
+decision:
+  # Transactions scoring above the review threshold but below this precision target
+  # go to manual review; above it they are blocked.
+  block_precision_target: 0.90
+
+models:
+  logistic_regression:
+    C: 0.1
+    max_iter: 2000
+  svm:
+    C: 1.0
+    kernel: rbf
+    # RBF SVM scales quadratically, so it trains on all frauds plus a sample of legit
+    # transactions (see docs/adr/0004-model-selection.md)
+    negatives_per_positive: 50
+  xgboost:
+    n_estimators: 400
+    max_depth: 4
+    learning_rate: 0.05
+    subsample: 0.8
+    colsample_bytree: 0.8
+
+output:
+  models_dir: models
+  reports_dir: reports

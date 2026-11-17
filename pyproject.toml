@@ -1,0 +1,54 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fraud-detection"
+version = "0.1.0"
+description = "End-to-end credit card fraud detection: training pipeline, cost-based decisions and explainability."
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Semanu Kwaku Sebuava" }]
+requires-python = ">=3.12"
+dependencies = [
+    "numpy==2.5.5",
+    "pandas==3.1.1",
+    "scikit-learn==1.9.1",
+    "xgboost==3.4.1",
+    "PyYAML==6.0.3",
+    "joblib==1.6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.2.0",
+    "pytest-cov==7.1.0",
+    "ruff==0.17.5",
+    "pre-commit>=4.0",
+]
+
+[project.scripts]
+fraud-train = "fraud_detection.pipeline:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fraud_detection"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "D"]
+ignore = ["D100", "D104", "D203", "D213", "SIM300"]
+
+[tool.ruff.lint.pep8-naming]
+# X / X_train is the standard name for feature matrices in ML code
+ignore-names = ["X", "X_*"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --cov=fraud_detection --cov-report=term-missing"

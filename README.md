@@ -4,7 +4,7 @@ End-to-end fraud detection system: a reproducible training pipeline that compare
 
 [![CI](https://github.com/Ohm-Kel/credit-card-fraud-detection/actions/workflows/ci.yml/badge.svg)](https://github.com/Ohm-Kel/credit-card-fraud-detection/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-lightgrey.svg)](pyproject.toml)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-lightgrey.svg)](pyproject.toml)
 
 ## Problem and solution
 
@@ -41,13 +41,13 @@ Full design, requirements and phases: [docs/architecture.md](docs/architecture.m
 
 ## Tech stack
 
-Python 3.11+, pandas, NumPy, scikit-learn, XGBoost, pytest, Ruff, GitHub Actions.
+Python 3.12+, pandas, NumPy, scikit-learn, XGBoost, pytest, Ruff, GitHub Actions.
 
 ## Getting started
 
 ### Prerequisites
 
-- Python 3.11 or later
+- Python 3.12 or later
 - macOS: `brew install libomp` (needed by XGBoost)
 - The dataset: download `creditcard.csv` from [Kaggle](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud) and place it in `data/`
 
@@ -56,7 +56,7 @@ Python 3.11+, pandas, NumPy, scikit-learn, XGBoost, pytest, Ruff, GitHub Actions
 ```bash
 git clone https://github.com/Ohm-Kel/credit-card-fraud-detection.git
 cd credit-card-fraud-detection
-python3.11 -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
 pre-commit install

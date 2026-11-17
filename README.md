@@ -94,14 +94,16 @@ Held-out test set: the last 20% of transactions in time (56,962 transactions, 75
 | Model | Val PR-AUC | Test PR-AUC | Test ROC-AUC | Recall | Precision | Alerts | Fraud amount caught | Cost | Saving vs no model |
 |---|---|---|---|---|---|---|---|---|---|
 | XGBoost | 0.778 | **0.795** | 0.978 | 0.760 | 0.781 | 73 | 65.9% | 3,061 | 62.2% |
+| Keras MLP | 0.750 | **0.795** | 0.971 | **0.773** | 0.817 | 71 | 65.9% | 3,041 | 62.4% |
 | RBF SVM (tuned, C=10, gamma=0.001) | 0.759 | 0.791 | 0.938 | 0.760 | 0.770 | 74 | **68.9%** | **2,839** | **64.9%** |
 | Logistic regression | 0.753 | 0.747 | 0.981 | 0.693 | **0.812** | 64 | 61.1% | 3,401 | 57.9% |
 
 **Findings**
 
-- XGBoost has the best ranking quality (PR-AUC); the tuned SVM has the lowest business cost at its chosen threshold. Better overall ranking does not guarantee lower cost at a single operating point, and with 75 test frauds the gap between them is within noise.
+- XGBoost and the Keras network tie on ranking quality (PR-AUC 0.795); the network has the best recall with fewer alerts, and the tuned SVM has the lowest business cost at its chosen threshold. Better overall ranking does not guarantee lower cost at a single operating point, and with 75 test frauds the gap between them is within noise.
 - **SVM fix ([ADR 0005](docs/adr/0005-svm-imbalance.md)).** The first SVM scored 0.975 ROC-AUC but only 0.206 PR-AUC, with 469 alerts at 11.9% precision. Class imbalance was corrected twice (undersampling plus balanced class weights) and `C` and `gamma` were untuned. Removing the class weights and tuning on validation PR-AUC raised test PR-AUC to 0.791, cut alerts to 74 and lowered cost from 4,746 to 2,839.
 - This is why PR-AUC is the headline metric: ROC-AUC barely moved between the broken and fixed SVM, because it is diluted by tens of thousands of easy true negatives.
+- **Keras network ([ADR 0006](docs/adr/0006-keras-mlp.md)).** Early stopping ended training after 14 epochs. Its holdout PR-AUC (0.886, the end of the training period) was well above its validation PR-AUC (0.750, a later period): fraud patterns shift over time and there are few frauds per period, which is why an untouched, later validation set is kept for thresholds.
 - The best SVM setting sits at the edge of the search grid, so a wider grid may improve it further.
 - Logistic regression and XGBoost gave identical results across runs, confirming the pipeline is reproducible with a fixed seed.
 - With 75 test frauds, one fraud is worth about 1.3 points of recall.

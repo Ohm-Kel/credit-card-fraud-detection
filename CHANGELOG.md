@@ -10,6 +10,7 @@ All notable changes to this project are documented here. The format follows
 - Keras neural network (`keras_mlp`) as a scikit-learn estimator with dropout and early stopping
 - Optional `dl` extra for TensorFlow and a CI job that tests it
 - ADR 0006
+- Keras results in the README
 
 ## [0.1.0] - 2026-11-17
 

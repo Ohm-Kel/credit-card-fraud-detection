@@ -120,6 +120,16 @@ Held-out test set: the last 20% of transactions in time (56,962 transactions, 75
 
 Reproduce with `fraud-train --config configs/train.yaml` (seed 42).
 
+### Explainability (SHAP, XGBoost)
+
+Global importance on all test frauds plus 500 legitimate test transactions, from `fraud-explain --model xgboost` (exact tree explainer, log-odds):
+
+1. V14 and V4 dominate (mean |SHAP| about 1.7 and 1.6), followed by V12 (1.1) and V10 (0.85).
+2. Amount ranks 9th (about 0.35): transaction size helps, but far less than the leading components.
+3. Time of day is outside the top 15: over two days of data it adds little once other features are known.
+
+Because V1 to V28 are anonymised PCA components, the explanations show which components drive a score but cannot be translated into business terms such as merchant or country. With raw features, the same `top_reasons` output would give analysts directly actionable reasons for each alert.
+
 ## Project structure
 
 ```

@@ -13,6 +13,7 @@ All notable changes to this project are documented here. The format follows
 - Keras results in the README
 - SHAP explanations (`fraud-explain`): global importance chart and top reasons per alert
 - Optional `explain` extra and ADR 0007
+- SHAP findings for XGBoost in the README
 
 ## [0.1.0] - 2026-11-17
 

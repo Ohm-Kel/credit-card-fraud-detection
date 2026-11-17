@@ -23,6 +23,7 @@ Card fraud is rare (about 0.17% of transactions in this dataset) but expensive. 
 - Logistic regression, RBF SVM, XGBoost and a Keras neural network, with class imbalance handled inside each model
 - Cost-based review threshold and precision-targeted block threshold, chosen on validation only
 - Versioned model artifacts with metadata (metrics, thresholds, config, data hash, commit)
+- SHAP explanations: global feature importance and the top reasons behind each alert
 
 ## Architecture
 
@@ -41,7 +42,7 @@ Full design, requirements and phases: [docs/architecture.md](docs/architecture.m
 
 ## Tech stack
 
-Python 3.12+, pandas, NumPy, scikit-learn, XGBoost, TensorFlow / Keras, pytest, Ruff, GitHub Actions.
+Python 3.12+, pandas, NumPy, scikit-learn, XGBoost, TensorFlow / Keras, SHAP, pytest, Ruff, GitHub Actions.
 
 ## Getting started
 
@@ -58,7 +59,7 @@ git clone https://github.com/Ohm-Kel/credit-card-fraud-detection.git
 cd credit-card-fraud-detection
 python3.12 -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev,dl]"      # drop ",dl" to skip TensorFlow and the Keras model
+pip install -e ".[dev,dl,explain]"   # dl = TensorFlow for the Keras model, explain = SHAP
 pre-commit install
 ```
 
@@ -73,10 +74,17 @@ fraud-train --config configs/train.yaml                     # all models
 fraud-train --config configs/train.yaml --models xgboost    # one model
 ```
 
+Explain a trained model (latest saved version) with SHAP:
+
+```bash
+fraud-explain --model xgboost
+```
+
 Outputs:
 
 - `models/<model>/<version>/` with `model.joblib` and `metadata.json`
 - `reports/metrics.json` (full results) and `reports/results.md` (summary table)
+- `reports/explanations/<model>.json` (global importance and reasons for the top alerts) and `<model>_importance.png`
 
 ### Running tests
 
@@ -139,7 +147,7 @@ Reproduce with `fraud-train --config configs/train.yaml` (seed 42).
 - [x] Investigate and fix the SVM (single imbalance correction, tuned C and gamma)
 - [ ] Widen the SVM search grid (best setting is at the edge)
 - [x] Keras neural network and model comparison
-- [ ] SHAP explanations (global and per transaction)
+- [x] SHAP explanations (global and per transaction)
 - [ ] MLflow experiment tracking
 - [ ] Phase 2: FastAPI scoring service, Docker, health checks
 - [ ] Phase 3: prediction logging, drift monitoring, retraining trigger

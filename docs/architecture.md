@@ -12,7 +12,7 @@ business, explainable and reproducible.
 
 - Score each transaction with a fraud probability.
 - Map the score to approve / review / block with thresholds tied to business costs.
-- Explain the main drivers of a score (planned: SHAP).
+- Explain the main drivers of a score with SHAP (global importance and per-transaction reasons).
 - Retrain when new labelled data arrives (planned).
 
 ### Non-functional
@@ -67,6 +67,7 @@ flowchart TB
 | Models | `models/factory.py`, `models/keras_mlp.py` | Logistic regression, calibrated RBF SVM, XGBoost, Keras MLP |
 | Registry | `models/registry.py` | Versioned artifacts with metadata |
 | Metrics | `evaluation/metrics.py` | PR-AUC, ROC-AUC, confusion counts, fraud amount caught |
+| Explanations | `evaluation/explain.py`, `explain_cli.py` | SHAP global importance and per-transaction reasons |
 | Thresholds | `evaluation/threshold.py` | Cost-optimal review threshold, precision-targeted block threshold |
 | Orchestration | `pipeline.py` | End-to-end run and reports |
 
@@ -99,3 +100,4 @@ score < review_threshold                     -> approve
 - [ADR 0004: Model selection and class imbalance](adr/0004-model-selection.md)
 - [ADR 0005: SVM imbalance handling and tuning](adr/0005-svm-imbalance.md)
 - [ADR 0006: Keras neural network as a scikit-learn estimator](adr/0006-keras-mlp.md)
+- [ADR 0007: SHAP explanations](adr/0007-shap.md)

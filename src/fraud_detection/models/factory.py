@@ -17,7 +17,7 @@ from fraud_detection.features.build import build_preprocessor
 
 logger = logging.getLogger(__name__)
 
-SUPPORTED_MODELS = ("logistic_regression", "svm", "xgboost")
+SUPPORTED_MODELS = ("logistic_regression", "svm", "xgboost", "keras_mlp")
 
 
 TRAINING_ONLY_KEYS = ("negatives_per_positive", "grid")
@@ -62,10 +62,27 @@ def build_model(
             n_jobs=-1,
             **params,
         )
+    elif name == "keras_mlp":
+        _require_tensorflow()
+        from fraud_detection.models.keras_mlp import KerasMLPClassifier
+
+        if "hidden_units" in params:
+            params["hidden_units"] = tuple(params["hidden_units"])
+        classifier = KerasMLPClassifier(random_state=seed, **params)
     else:
         raise ValueError(f"Unknown model '{name}'. Supported: {SUPPORTED_MODELS}")
 
     return Pipeline(steps=[("preprocess", build_preprocessor()), ("model", classifier)])
+
+
+def _require_tensorflow() -> None:
+    """Fail early with an install hint if the optional deep learning extra is missing."""
+    try:
+        import tensorflow  # noqa: F401
+    except ImportError as error:
+        raise ImportError(
+            "keras_mlp needs TensorFlow. Install it with: pip install -e '.[dl]'"
+        ) from error
 
 
 def undersample_negatives(

@@ -44,6 +44,16 @@ models:
     learning_rate: 0.05
     subsample: 0.8
     colsample_bytree: 0.8
+  keras_mlp:
+    # Requires the optional extra: pip install -e '.[dl]' (see docs/adr/0006-keras-mlp.md)
+    hidden_units: [64, 32]
+    dropout: 0.3
+    learning_rate: 0.001
+    batch_size: 2048
+    epochs: 50
+    patience: 5
+    positive_weight: 10.0
+    holdout_fraction: 0.1
 
 output:
   models_dir: models

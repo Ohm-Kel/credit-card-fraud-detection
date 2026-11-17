@@ -57,3 +57,12 @@ def load_model(folder: str | Path) -> tuple[Pipeline, dict[str, Any]]:
     model = joblib.load(folder / MODEL_FILE)
     metadata = json.loads((folder / METADATA_FILE).read_text(encoding="utf-8"))
     return model, metadata
+
+
+def latest_model(models_dir: str | Path, name: str) -> Path:
+    """Folder of the most recent saved version of a model."""
+    folder = Path(models_dir) / name
+    versions = sorted(v for v in folder.glob("*") if (v / MODEL_FILE).exists())
+    if not versions:
+        raise FileNotFoundError(f"No saved '{name}' model in {folder}. Run fraud-train first.")
+    return versions[-1]

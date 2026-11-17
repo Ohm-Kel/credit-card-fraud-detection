@@ -23,6 +23,10 @@ dependencies = [
 dl = [
     "tensorflow==2.21.0",
 ]
+explain = [
+    "shap==0.54.1",
+    "matplotlib==3.11.2",
+]
 dev = [
     "pytest==9.2.0",
     "pytest-cov==7.1.0",
@@ -32,6 +36,7 @@ dev = [
 
 [project.scripts]
 fraud-train = "fraud_detection.pipeline:main"
+fraud-explain = "fraud_detection.explain_cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/fraud_detection"]

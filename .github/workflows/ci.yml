@@ -29,7 +29,7 @@ jobs:
       - name: Test
         run: pytest --cov-report=xml
 
-  test-deep-learning:
+  test-full:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,7 +37,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - name: Install with TensorFlow
-        run: pip install -e ".[dev,dl]"
-      - name: Test (including Keras model)
+      - name: Install with TensorFlow and SHAP
+        run: pip install -e ".[dev,dl,explain]"
+      - name: Test (including Keras model and SHAP explanations)
         run: pytest

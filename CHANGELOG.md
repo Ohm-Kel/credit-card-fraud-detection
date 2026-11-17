@@ -11,6 +11,8 @@ All notable changes to this project are documented here. The format follows
 - Optional `dl` extra for TensorFlow and a CI job that tests it
 - ADR 0006
 - Keras results in the README
+- SHAP explanations (`fraud-explain`): global importance chart and top reasons per alert
+- Optional `explain` extra and ADR 0007
 
 ## [0.1.0] - 2026-11-17
 

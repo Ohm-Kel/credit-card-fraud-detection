@@ -20,13 +20,24 @@ logger = logging.getLogger(__name__)
 SUPPORTED_MODELS = ("logistic_regression", "svm", "xgboost")
 
 
-def build_model(name: str, params: dict[str, Any], y_train: pd.Series, seed: int) -> Pipeline:
+TRAINING_ONLY_KEYS = ("negatives_per_positive", "grid")
+
+
+def build_model(
+    name: str,
+    params: dict[str, Any],
+    y_train: pd.Series,
+    seed: int,
+    calibrate: bool = True,
+) -> Pipeline:
     """Create an unfitted pipeline for the named model.
 
     Class imbalance is handled inside each model (class weights or scale_pos_weight)
     rather than by oversampling, so the validation and test sets keep the real fraud rate.
+    The SVM is the exception: it is trained on undersampled data, which already rebalances
+    the classes, so it gets no extra class weights (see docs/adr/0005-svm-imbalance.md).
     """
-    params = {k: v for k, v in params.items() if k != "negatives_per_positive"}
+    params = {k: v for k, v in params.items() if k not in TRAINING_ONLY_KEYS}
     negatives = int((y_train == 0).sum())
     positives = int((y_train == 1).sum())
     if positives == 0:
@@ -35,12 +46,13 @@ def build_model(name: str, params: dict[str, Any], y_train: pd.Series, seed: int
     if name == "logistic_regression":
         classifier = LogisticRegression(class_weight="balanced", random_state=seed, **params)
     elif name == "svm":
+        svm = SVC(random_state=seed, **params)
         # SVMs output margins, not probabilities; sigmoid (Platt) calibration converts them.
-        classifier = CalibratedClassifierCV(
-            SVC(class_weight="balanced", random_state=seed, **params),
-            method="sigmoid",
-            cv=3,
-            ensemble=False,
+        # Tuning skips calibration because ranking metrics only need the margin.
+        classifier = (
+            CalibratedClassifierCV(svm, method="sigmoid", cv=3, ensemble=False)
+            if calibrate
+            else svm
         )
     elif name == "xgboost":
         classifier = XGBClassifier(
@@ -75,18 +87,25 @@ def undersample_negatives(
 
 
 def fit_model(
-    name: str, params: dict[str, Any], X_train: pd.DataFrame, y_train: pd.Series, seed: int
+    name: str,
+    params: dict[str, Any],
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    seed: int,
+    calibrate: bool = True,
 ) -> Pipeline:
     """Build and fit a model, applying any model-specific sampling."""
     if name == "svm" and params.get("negatives_per_positive"):
         X_train, y_train = undersample_negatives(
             X_train, y_train, int(params["negatives_per_positive"]), seed
         )
-    model = build_model(name, params, y_train, seed)
+    model = build_model(name, params, y_train, seed, calibrate=calibrate)
     model.fit(X_train, y_train)
     return model
 
 
 def predict_scores(model: Pipeline, X: pd.DataFrame) -> np.ndarray:
-    """Fraud probability for each transaction."""
-    return model.predict_proba(X)[:, 1]
+    """Fraud score for each transaction: probability if available, otherwise the margin."""
+    if hasattr(model, "predict_proba"):
+        return model.predict_proba(X)[:, 1]
+    return model.decision_function(X)

@@ -28,3 +28,16 @@ jobs:
           ruff format --check .
       - name: Test
         run: pytest --cov-report=xml
+
+  test-deep-learning:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install with TensorFlow
+        run: pip install -e ".[dev,dl]"
+      - name: Test (including Keras model)
+        run: pytest

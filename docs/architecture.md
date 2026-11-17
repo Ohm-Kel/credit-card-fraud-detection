@@ -64,7 +64,7 @@ flowchart TB
 | Validation | `data/validate.py` | Schema, types, nulls, binary target, non-negative amounts |
 | Split | `data/split.py` | Time-ordered train / validation / test (60 / 20 / 20) |
 | Features | `features/build.py` | Cyclical time of day, log-scaled amount, scaled PCA features |
-| Models | `models/factory.py` | Logistic regression, calibrated RBF SVM, XGBoost |
+| Models | `models/factory.py`, `models/keras_mlp.py` | Logistic regression, calibrated RBF SVM, XGBoost, Keras MLP |
 | Registry | `models/registry.py` | Versioned artifacts with metadata |
 | Metrics | `evaluation/metrics.py` | PR-AUC, ROC-AUC, confusion counts, fraud amount caught |
 | Thresholds | `evaluation/threshold.py` | Cost-optimal review threshold, precision-targeted block threshold |
@@ -98,3 +98,4 @@ score < review_threshold                     -> approve
 - [ADR 0003: Metrics and cost-based thresholds](adr/0003-metrics-and-thresholds.md)
 - [ADR 0004: Model selection and class imbalance](adr/0004-model-selection.md)
 - [ADR 0005: SVM imbalance handling and tuning](adr/0005-svm-imbalance.md)
+- [ADR 0006: Keras neural network as a scikit-learn estimator](adr/0006-keras-mlp.md)

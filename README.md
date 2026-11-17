@@ -20,7 +20,7 @@ Card fraud is rare (about 0.17% of transactions in this dataset) but expensive. 
 - Schema and quality validation that reports every problem at once
 - Time-ordered train / validation / test split to avoid leaking future information
 - One scikit-learn pipeline per model, so preprocessing is identical in training and serving
-- Logistic regression, RBF SVM and XGBoost, with class imbalance handled inside each model
+- Logistic regression, RBF SVM, XGBoost and a Keras neural network, with class imbalance handled inside each model
 - Cost-based review threshold and precision-targeted block threshold, chosen on validation only
 - Versioned model artifacts with metadata (metrics, thresholds, config, data hash, commit)
 
@@ -41,7 +41,7 @@ Full design, requirements and phases: [docs/architecture.md](docs/architecture.m
 
 ## Tech stack
 
-Python 3.12+, pandas, NumPy, scikit-learn, XGBoost, pytest, Ruff, GitHub Actions.
+Python 3.12+, pandas, NumPy, scikit-learn, XGBoost, TensorFlow / Keras, pytest, Ruff, GitHub Actions.
 
 ## Getting started
 
@@ -58,7 +58,7 @@ git clone https://github.com/Ohm-Kel/credit-card-fraud-detection.git
 cd credit-card-fraud-detection
 python3.12 -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev]"
+pip install -e ".[dev,dl]"      # drop ",dl" to skip TensorFlow and the Keras model
 pre-commit install
 ```
 
@@ -136,7 +136,7 @@ Reproduce with `fraud-train --config configs/train.yaml` (seed 42).
 - [x] Phase 1: validated, reproducible training pipeline with cost-based thresholds
 - [x] Investigate and fix the SVM (single imbalance correction, tuned C and gamma)
 - [ ] Widen the SVM search grid (best setting is at the edge)
-- [ ] Keras neural network and model comparison
+- [x] Keras neural network and model comparison
 - [ ] SHAP explanations (global and per transaction)
 - [ ] MLflow experiment tracking
 - [ ] Phase 2: FastAPI scoring service, Docker, health checks

@@ -27,6 +27,9 @@ serve = [
     "fastapi==0.165.0",
     "uvicorn==0.54.0",
 ]
+tracking = [
+    "mlflow==3.18.0",
+]
 explain = [
     "shap==0.54.1",
     "matplotlib==3.11.2",

@@ -42,6 +42,7 @@ dev = [
 [project.scripts]
 fraud-train = "fraud_detection.pipeline:main"
 fraud-explain = "fraud_detection.explain_cli:main"
+fraud-monitor = "fraud_detection.monitoring.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/fraud_detection"]

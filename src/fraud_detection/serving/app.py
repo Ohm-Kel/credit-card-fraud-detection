@@ -5,15 +5,20 @@ Configuration (environment variables):
 - FRAUD_MODEL_DIR: a specific saved model folder, or
 - FRAUD_MODELS_DIR (default "models") and FRAUD_MODEL_NAME (default "xgboost"): the latest
   saved version of that model is served.
+- FRAUD_PREDICTION_LOG (optional): append every prediction to this JSON Lines file, which
+  `fraud-monitor --log` reads to check drift (see docs/adr/0009-monitoring.md).
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import os
+import threading
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -49,6 +54,33 @@ class ServedModel:
     name: str
     version: str
     explainer: TreeReasonExplainer | None
+    log_path: Path | None = None
+    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+
+    def log(self, frame: pd.DataFrame, probabilities: np.ndarray, decisions: np.ndarray) -> None:
+        """Append one JSON line per prediction (inputs, score, decision, model version)."""
+        if self.log_path is None:
+            return
+        timestamp = datetime.now(UTC).isoformat()
+        lines = [
+            json.dumps(
+                {
+                    "timestamp": timestamp,
+                    "model_name": self.name,
+                    "model_version": self.version,
+                    "inputs": frame.iloc[i].to_dict(),
+                    "fraud_probability": float(probabilities[i]),
+                    "decision": str(decisions[i]),
+                }
+            )
+            for i in range(len(frame))
+        ]
+        try:
+            with self._lock, self.log_path.open("a", encoding="utf-8") as handle:
+                handle.write("\n".join(lines) + "\n")
+        except OSError:
+            # Monitoring must never break scoring: log the failure and keep serving.
+            logger.exception("Could not write to prediction log %s", self.log_path)
 
 
 def resolve_model_dir() -> Path:
@@ -62,7 +94,7 @@ def resolve_model_dir() -> Path:
     )
 
 
-def load_served_model(folder: Path) -> ServedModel:
+def load_served_model(folder: Path, log_path: Path | None = None) -> ServedModel:
     """Load the pipeline, its decision thresholds and, for tree models, a SHAP explainer."""
     model, metadata = load_model(folder)
     policy_data = metadata["policy"]
@@ -77,7 +109,10 @@ def load_served_model(folder: Path) -> ServedModel:
         logger.warning("Explanations disabled: %s", error)
         explainer = None
     logger.info("Serving %s version %s from %s", metadata["name"], metadata["version"], folder)
-    return ServedModel(model, policy, metadata["name"], metadata["version"], explainer)
+    if log_path is not None:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        logger.info("Logging predictions to %s", log_path)
+    return ServedModel(model, policy, metadata["name"], metadata["version"], explainer, log_path)
 
 
 def score(served: ServedModel, transactions: list[Any]) -> list[Prediction]:
@@ -85,6 +120,7 @@ def score(served: ServedModel, transactions: list[Any]) -> list[Prediction]:
     frame = pd.DataFrame([t.model_dump() for t in transactions])[COLUMNS]
     probabilities = predict_scores(served.model, frame)
     decisions = served.policy.decide(probabilities)
+    served.log(frame, probabilities, decisions)
     explanation = served.explainer.explain(frame) if served.explainer else None
     policy = served.policy.to_dict()
 
@@ -109,12 +145,14 @@ def score(served: ServedModel, transactions: list[Any]) -> list[Prediction]:
     return predictions
 
 
-def create_app(model_dir: Path | None = None) -> FastAPI:
+def create_app(model_dir: Path | None = None, prediction_log: Path | None = None) -> FastAPI:
     """Build the app; the model is loaded at startup so a bad model fails fast."""
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        app.state.served = load_served_model(model_dir or resolve_model_dir())
+        log_env = os.environ.get("FRAUD_PREDICTION_LOG")
+        log_path = prediction_log or (Path(log_env) if log_env else None)
+        app.state.served = load_served_model(model_dir or resolve_model_dir(), log_path)
         yield
 
     app = FastAPI(

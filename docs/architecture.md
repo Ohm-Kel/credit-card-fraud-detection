@@ -13,7 +13,7 @@ business, explainable and reproducible.
 - Score each transaction with a fraud probability.
 - Map the score to approve / review / block with thresholds tied to business costs.
 - Explain the main drivers of a score with SHAP (global importance and per-transaction reasons).
-- Retrain when new labelled data arrives (planned).
+- Detect drift in inputs and scores, and performance decay once labels arrive.
 
 ### Non-functional
 
@@ -21,7 +21,7 @@ business, explainable and reproducible.
 |---|---|
 | Ranking quality | Maximise PR-AUC on a time-ordered held-out set |
 | Decision quality | Minimise expected cost = missed fraud amount + review cost per alert |
-| Latency (serving, phase 2) | Under 100 ms per request |
+| Latency (serving) | Under 100 ms per request (measured p99: 15.5 ms with SHAP reasons) |
 | Reproducibility | Fixed seeds, data hash, config and git commit stored with each model |
 | Auditability | Every model artifact carries its metrics and thresholds |
 
@@ -44,13 +44,13 @@ flowchart TB
         E --> F[Evaluate on test]
         F --> G[(Model registry)]
     end
-    subgraph Online serving - phase 2
+    subgraph Online serving
         H[Transaction] --> I[FastAPI /predict]
         G --> I
         I --> J[Decision: approve / review / block]
         J --> K[(Prediction log)]
     end
-    subgraph Monitoring - phase 3
+    subgraph Monitoring
         K --> L[Drift and delayed-label performance]
         L -. retrain .-> A
     end
@@ -69,6 +69,8 @@ flowchart TB
 | Metrics | `evaluation/metrics.py` | PR-AUC, ROC-AUC, confusion counts, fraud amount caught |
 | Explanations | `evaluation/explain.py`, `explain_cli.py` | SHAP global importance and per-transaction reasons |
 | Thresholds | `evaluation/threshold.py` | Cost-optimal review threshold, precision-targeted block threshold |
+| Serving | `serving/app.py`, `serving/schemas.py` | FastAPI scoring with decisions and reasons |
+| Monitoring | `monitoring/drift.py`, `monitoring/cli.py` | PSI drift on features and scores, performance with delayed labels |
 | Orchestration | `pipeline.py` | End-to-end run and reports |
 
 ## Decision policy
@@ -88,9 +90,9 @@ score < review_threshold                     -> approve
 | Phase | Scope | Status |
 |---|---|---|
 | 1 | Validated, reproducible training pipeline, cost-based thresholds, tests, CI | Done |
-| 1b | Keras neural network, SHAP explanations, MLflow tracking | Next |
-| 2 | FastAPI scoring service, Pydantic schemas, Docker, health check | Planned |
-| 3 | Prediction logging, drift monitoring (PSI), delayed labels, retraining trigger | Planned |
+| 1b | Keras neural network, SHAP explanations, MLflow tracking | Done except MLflow |
+| 2 | FastAPI scoring service, Pydantic schemas, Docker, health check | Done |
+| 3 | Prediction logging, drift monitoring (PSI), delayed labels, retraining alert | Done |
 
 ## Decisions
 
@@ -101,3 +103,5 @@ score < review_threshold                     -> approve
 - [ADR 0005: SVM imbalance handling and tuning](adr/0005-svm-imbalance.md)
 - [ADR 0006: Keras neural network as a scikit-learn estimator](adr/0006-keras-mlp.md)
 - [ADR 0007: SHAP explanations](adr/0007-shap.md)
+- [ADR 0008: FastAPI scoring service](adr/0008-scoring-api.md)
+- [ADR 0009: Prediction logging and drift monitoring](adr/0009-monitoring.md)

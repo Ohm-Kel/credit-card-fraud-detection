@@ -25,6 +25,7 @@ Card fraud is rare (about 0.17% of transactions in this dataset) but expensive. 
 - Versioned model artifacts with metadata (metrics, thresholds, config, data hash, commit)
 - SHAP explanations: global feature importance and the top reasons behind each alert
 - FastAPI scoring service in Docker: score, decision, thresholds and top 3 reasons per transaction (p99 latency 15.5 ms)
+- Monitoring: every prediction logged; PSI drift on features and scores, and performance once labels arrive
 
 ## Architecture
 
@@ -36,7 +37,9 @@ flowchart LR
     E --> F[Evaluate on test]
     F --> G[(Model registry)]
     G --> H[FastAPI scoring]
-    H -. phase 3 .-> I[Monitoring and retraining]
+    H --> I[Prediction log]
+    I --> J[Drift monitoring]
+    J -. alert: retrain .-> C
 ```
 
 Full design, requirements and phases: [docs/architecture.md](docs/architecture.md). Key decisions are recorded as ADRs in [docs/adr](docs/adr).
@@ -125,6 +128,22 @@ curl -X POST http://localhost:8000/predict \
 
 Interactive docs: http://localhost:8000/docs. Also available: `GET /health` and `POST /predict/batch` (up to 1,000 transactions). Example output above is from the synthetic demo model.
 
+### Monitoring drift
+
+The Compose setup logs every prediction to `logs/predictions.jsonl`. Compare live traffic with the training data:
+
+```bash
+fraud-monitor --model xgboost --log logs/predictions.jsonl
+```
+
+Without `--log`, the held-out test period stands in for production with delayed labels, so PR-AUC is checked as well:
+
+```bash
+fraud-monitor --model xgboost
+```
+
+The report goes to `reports/monitoring/<model>.json`. PSI below 0.1 is stable, 0.1 to 0.25 moderate, and above 0.25 significant. The command exits with code 1 when it raises an alert, so a scheduler can act on it.
+
 ### Running tests
 
 ```bash
@@ -184,6 +203,7 @@ Because V1 to V28 are anonymised PCA components, the explanations show which com
 │   ├── models/                 # model factory and registry
 │   ├── evaluation/             # metrics, cost-based thresholds, SHAP
 │   ├── serving/                # FastAPI app and request/response schemas
+│   ├── monitoring/             # PSI drift and the fraud-monitor command
 │   └── pipeline.py             # end-to-end training entry point
 └── tests/                      # pytest suite on synthetic data
 ```
@@ -203,7 +223,7 @@ Because V1 to V28 are anonymised PCA components, the explanations show which com
 - [x] SHAP explanations (global and per transaction)
 - [ ] MLflow experiment tracking
 - [x] Phase 2: FastAPI scoring service, Docker, health checks
-- [ ] Phase 3: prediction logging, drift monitoring, retraining trigger
+- [x] Phase 3: prediction logging, drift monitoring, retraining alert
 
 ## Contributors
 

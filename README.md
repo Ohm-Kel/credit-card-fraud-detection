@@ -221,7 +221,7 @@ Because V1 to V28 are anonymised PCA components, the explanations show which com
 
 - [x] Phase 1: validated, reproducible training pipeline with cost-based thresholds
 - [x] Investigate and fix the SVM (single imbalance correction, tuned C and gamma)
-- [ ] Widen the SVM search grid (best setting is at the edge)
+- [x] Widen the SVM search grid (best setting was at the edge); results table to be refreshed on the full dataset
 - [x] Keras neural network and model comparison
 - [x] SHAP explanations (global and per transaction)
 - [x] MLflow experiment tracking

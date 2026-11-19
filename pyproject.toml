@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fraud-detection"
-version = "0.1.0"
+version = "0.2.0"
 description = "End-to-end credit card fraud detection: training pipeline, cost-based decisions and explainability."
 readme = "README.md"
 license = "MIT"

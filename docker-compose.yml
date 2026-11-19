@@ -1,0 +1,13 @@
+services:
+  api:
+    build: .
+    image: credit-card-fraud-detection:latest
+    ports:
+      - "8000:8000"
+    environment:
+      FRAUD_MODELS_DIR: /app/models
+      FRAUD_MODEL_NAME: xgboost
+    volumes:
+      # Trained models from `fraud-train` are mounted read-only, not baked into the image
+      - ./models:/app/models:ro
+    restart: unless-stopped

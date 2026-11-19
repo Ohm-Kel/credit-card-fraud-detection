@@ -37,9 +37,9 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - name: Install with TensorFlow and SHAP
-        run: pip install -e ".[dev,dl,explain,serve]"
-      - name: Test (including Keras model, SHAP explanations and the API)
+      - name: Install all extras (TensorFlow, SHAP, FastAPI, MLflow)
+        run: pip install -e ".[dev,dl,explain,serve,tracking]"
+      - name: Test everything (Keras, SHAP, API, MLflow)
         run: pytest
 
   docker-smoke-test:

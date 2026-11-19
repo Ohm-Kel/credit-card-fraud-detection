@@ -14,6 +14,9 @@ All notable changes to this project are documented here. The format follows
 - SHAP explanations (`fraud-explain`): global importance chart and top reasons per alert
 - Optional `explain` extra and ADR 0007
 - SHAP findings for XGBoost in the README
+- FastAPI scoring service (`/health`, `/predict`, `/predict/batch`) with decisions, thresholds and SHAP reasons
+- Dockerfile, Docker Compose and a CI job that builds the image and scores an example transaction
+- Synthetic demo model script and example request; ADR 0008
 
 ## [0.1.0] - 2026-11-17
 

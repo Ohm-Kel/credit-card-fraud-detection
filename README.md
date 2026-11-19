@@ -24,6 +24,7 @@ Card fraud is rare (about 0.17% of transactions in this dataset) but expensive. 
 - Cost-based review threshold and precision-targeted block threshold, chosen on validation only
 - Versioned model artifacts with metadata (metrics, thresholds, config, data hash, commit)
 - SHAP explanations: global feature importance and the top reasons behind each alert
+- FastAPI scoring service in Docker: score, decision, thresholds and top 3 reasons per transaction (p99 latency 15.5 ms)
 
 ## Architecture
 
@@ -34,7 +35,7 @@ flowchart LR
     D --> E[Choose thresholds on validation]
     E --> F[Evaluate on test]
     F --> G[(Model registry)]
-    G -. phase 2 .-> H[FastAPI scoring]
+    G --> H[FastAPI scoring]
     H -. phase 3 .-> I[Monitoring and retraining]
 ```
 
@@ -42,7 +43,7 @@ Full design, requirements and phases: [docs/architecture.md](docs/architecture.m
 
 ## Tech stack
 
-Python 3.12+, pandas, NumPy, scikit-learn, XGBoost, TensorFlow / Keras, SHAP, pytest, Ruff, GitHub Actions.
+Python 3.12+, pandas, NumPy, scikit-learn, XGBoost, TensorFlow / Keras, SHAP, FastAPI, Docker, pytest, Ruff, GitHub Actions.
 
 ## Getting started
 
@@ -59,7 +60,7 @@ git clone https://github.com/Ohm-Kel/credit-card-fraud-detection.git
 cd credit-card-fraud-detection
 python3.12 -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev,dl,explain]"   # dl = TensorFlow for the Keras model, explain = SHAP
+pip install -e ".[dev,dl,explain,serve]"   # dl = TensorFlow, explain = SHAP, serve = FastAPI
 pre-commit install
 ```
 
@@ -85,6 +86,44 @@ Outputs:
 - `models/<model>/<version>/` with `model.joblib` and `metadata.json`
 - `reports/metrics.json` (full results) and `reports/results.md` (summary table)
 - `reports/explanations/<model>.json` (global importance and reasons for the top alerts) and `<model>_importance.png`
+
+### Serving predictions
+
+The API serves the latest saved model (XGBoost by default) and returns a decision with reasons.
+
+```bash
+# With Docker (models/ is mounted read-only into the container)
+docker compose up --build
+
+# Or directly
+uvicorn fraud_detection.serving.app:app --reload
+```
+
+No Kaggle file yet? `python scripts/make_demo_model.py` trains a demo model on synthetic data.
+
+```bash
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d @examples/transaction.json
+```
+
+```json
+{
+  "fraud_probability": 0.9999,
+  "decision": "block",
+  "review_threshold": 0.78,
+  "block_threshold": 0.9996,
+  "reasons": [
+    {"feature": "V2", "value": 3.52, "contribution": 4.64},
+    {"feature": "V4", "value": 2.96, "contribution": 3.75},
+    {"feature": "V3", "value": 2.27, "contribution": 2.11}
+  ],
+  "model_name": "xgboost",
+  "model_version": "20261117T202806Z"
+}
+```
+
+Interactive docs: http://localhost:8000/docs. Also available: `GET /health` and `POST /predict/batch` (up to 1,000 transactions). Example output above is from the synthetic demo model.
 
 ### Running tests
 
@@ -135,12 +174,16 @@ Because V1 to V28 are anonymised PCA components, the explanations show which com
 ```
 ├── configs/train.yaml          # all training settings
 ├── docs/                       # architecture and ADRs
+├── examples/                   # sample API request
+├── scripts/                    # demo model on synthetic data
+├── Dockerfile, docker-compose.yml
 ├── notebooks/                  # exploration only
 ├── src/fraud_detection/
 │   ├── data/                   # load, validate, time-based split
 │   ├── features/               # preprocessing pipeline
 │   ├── models/                 # model factory and registry
-│   ├── evaluation/             # metrics and cost-based thresholds
+│   ├── evaluation/             # metrics, cost-based thresholds, SHAP
+│   ├── serving/                # FastAPI app and request/response schemas
 │   └── pipeline.py             # end-to-end training entry point
 └── tests/                      # pytest suite on synthetic data
 ```
@@ -159,7 +202,7 @@ Because V1 to V28 are anonymised PCA components, the explanations show which com
 - [x] Keras neural network and model comparison
 - [x] SHAP explanations (global and per transaction)
 - [ ] MLflow experiment tracking
-- [ ] Phase 2: FastAPI scoring service, Docker, health checks
+- [x] Phase 2: FastAPI scoring service, Docker, health checks
 - [ ] Phase 3: prediction logging, drift monitoring, retraining trigger
 
 ## Contributors

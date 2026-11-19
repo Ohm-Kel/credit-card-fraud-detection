@@ -142,3 +142,29 @@ def top_reasons(
             }
         )
     return reasons
+
+
+class TreeReasonExplainer:
+    """Reusable exact SHAP explainer for tree models, built once and called per request.
+
+    Used by the scoring API: building a TreeExplainer is the slow part, explaining a single
+    transaction afterwards takes milliseconds. Tree explainers need no background data.
+    """
+
+    def __init__(self, model: Pipeline) -> None:
+        """Build the explainer; raise ValueError for models without a tree explainer."""
+        import shap
+
+        classifier = model.named_steps["model"]
+        if type(classifier).__name__ != "XGBClassifier":
+            raise ValueError("Per-request reasons are only supported for tree models (XGBoost)")
+        self._preprocessor = model.named_steps["preprocess"]
+        self._names = list(self._preprocessor.get_feature_names_out())
+        self._explainer = shap.TreeExplainer(classifier)
+
+    def explain(self, X: pd.DataFrame) -> Explanation:
+        """SHAP values (log-odds) for the given raw transactions."""
+        result = self._explainer(self._preprocessor.transform(X))
+        values, names = _group_time_features(np.asarray(result.values, dtype=float), self._names)
+        base = float(np.ravel(result.base_values)[0])
+        return Explanation(values, base, names, "tree", "log-odds")

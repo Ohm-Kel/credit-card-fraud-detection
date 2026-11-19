@@ -55,6 +55,13 @@ models:
     positive_weight: 10.0
     holdout_fraction: 0.1
 
+tracking:
+  # MLflow tracking (pip install -e '.[tracking]', or run fraud-train --track)
+  # View with: mlflow ui --backend-store-uri sqlite:///mlflow.db
+  enabled: false
+  uri: mlflow.db
+  experiment: fraud-detection
+
 output:
   models_dir: models
   reports_dir: reports

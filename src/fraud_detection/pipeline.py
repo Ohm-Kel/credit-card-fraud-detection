@@ -31,6 +31,7 @@ from fraud_detection.features.build import feature_columns
 from fraud_detection.models.factory import fit_model, predict_scores
 from fraud_detection.models.registry import save_model
 from fraud_detection.models.tuning import tune_on_validation
+from fraud_detection.tracking import Tracker
 
 logger = logging.getLogger("fraud_detection")
 
@@ -139,8 +140,16 @@ def results_table(results: list[dict[str, Any]], no_model_cost: float) -> str:
     return "\n".join(lines)
 
 
-def run(config: TrainConfig, data_path: str | None = None, only: list[str] | None = None) -> Path:
-    """Run the whole pipeline and return the path of the JSON report."""
+def run(
+    config: TrainConfig,
+    data_path: str | None = None,
+    only: list[str] | None = None,
+    track: bool = False,
+) -> Path:
+    """Run the whole pipeline and return the path of the JSON report.
+
+    ``track=True`` turns on MLflow tracking even if the config leaves it disabled.
+    """
     set_seeds(config.seed)
     path = data_path or config.data.path
     df = validate_transactions(load_transactions(path), config.data.target)
@@ -157,7 +166,24 @@ def run(config: TrainConfig, data_path: str | None = None, only: list[str] | Non
     if unknown:
         raise ValueError(f"Models not defined in config: {unknown}")
 
-    results = [train_and_evaluate(n, dict(config.models[n] or {}), split, config) for n in names]
+    tracking = dict(config.raw.get("tracking") or {})
+    if track:
+        tracking["enabled"] = True
+    tracker = Tracker(tracking)
+    run_params = {
+        "seed": config.seed,
+        "split": config.raw.get("split", {}),
+        "costs": config.raw.get("costs", {}),
+        "decision": config.raw.get("decision", {}),
+        "models": ",".join(names),
+    }
+    tags = {"data_path": str(path), "data_sha256": file_fingerprint(path)}
+    results = []
+    with tracker.pipeline_run(run_params, tags):
+        for name in names:
+            result = train_and_evaluate(name, dict(config.models[name] or {}), split, config)
+            tracker.log_model_result(result)
+            results.append(result)
 
     test = split.test
     no_model_cost = float(
@@ -169,7 +195,7 @@ def run(config: TrainConfig, data_path: str | None = None, only: list[str] | Non
     reports_dir.mkdir(parents=True, exist_ok=True)
     report = {
         "data_path": str(path),
-        "data_sha256": file_fingerprint(path),
+        "data_sha256": tags["data_sha256"],
         "seed": config.seed,
         "config": config.raw,
         "no_model_test_cost": no_model_cost,
@@ -190,12 +216,13 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--config", default="configs/train.yaml", help="Path to YAML config")
     parser.add_argument("--data", default=None, help="Override the dataset path")
     parser.add_argument("--models", nargs="+", default=None, help="Train only these models")
+    parser.add_argument("--track", action="store_true", help="Log the run to MLflow")
     args = parser.parse_args(argv)
 
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
     )
-    run(load_config(args.config), data_path=args.data, only=args.models)
+    run(load_config(args.config), data_path=args.data, only=args.models, track=args.track)
 
 
 if __name__ == "__main__":

@@ -23,7 +23,10 @@ Card fraud is rare (about 0.17% of transactions in this dataset) but expensive. 
 - Logistic regression, RBF SVM, XGBoost and a Keras neural network, with class imbalance handled inside each model
 - Cost-based review threshold and precision-targeted block threshold, chosen on validation only
 - Versioned model artifacts with metadata (metrics, thresholds, config, data hash, commit)
+- Optional MLflow tracking: one run per training, nested runs per model with metrics and thresholds
 - SHAP explanations: global feature importance and the top reasons behind each alert
+- FastAPI scoring service in Docker: score, decision, thresholds and top 3 reasons per transaction (p99 latency 15.5 ms)
+- Monitoring: every prediction logged; PSI drift on features and scores, and performance once labels arrive
 
 ## Architecture
 
@@ -34,15 +37,17 @@ flowchart LR
     D --> E[Choose thresholds on validation]
     E --> F[Evaluate on test]
     F --> G[(Model registry)]
-    G -. phase 2 .-> H[FastAPI scoring]
-    H -. phase 3 .-> I[Monitoring and retraining]
+    G --> H[FastAPI scoring]
+    H --> I[Prediction log]
+    I --> J[Drift monitoring]
+    J -. alert: retrain .-> C
 ```
 
 Full design, requirements and phases: [docs/architecture.md](docs/architecture.md). Key decisions are recorded as ADRs in [docs/adr](docs/adr).
 
 ## Tech stack
 
-Python 3.12+, pandas, NumPy, scikit-learn, XGBoost, TensorFlow / Keras, SHAP, pytest, Ruff, GitHub Actions.
+Python 3.12+, pandas, NumPy, scikit-learn, XGBoost, TensorFlow / Keras, SHAP, FastAPI, Docker, MLflow, pytest, Ruff, GitHub Actions.
 
 ## Getting started
 
@@ -59,7 +64,7 @@ git clone https://github.com/Ohm-Kel/credit-card-fraud-detection.git
 cd credit-card-fraud-detection
 python3.12 -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev,dl,explain]"   # dl = TensorFlow for the Keras model, explain = SHAP
+pip install -e ".[dev,dl,explain,serve,tracking]"   # dl = TensorFlow, explain = SHAP, serve = FastAPI, tracking = MLflow
 pre-commit install
 ```
 
@@ -72,6 +77,8 @@ See `.env.example`. The dataset path can also be set in `configs/train.yaml` or 
 ```bash
 fraud-train --config configs/train.yaml                     # all models
 fraud-train --config configs/train.yaml --models xgboost    # one model
+fraud-train --config configs/train.yaml --track             # also log to MLflow
+mlflow ui --backend-store-uri sqlite:///mlflow.db           # compare runs at localhost:5000
 ```
 
 Explain a trained model (latest saved version) with SHAP:
@@ -85,6 +92,60 @@ Outputs:
 - `models/<model>/<version>/` with `model.joblib` and `metadata.json`
 - `reports/metrics.json` (full results) and `reports/results.md` (summary table)
 - `reports/explanations/<model>.json` (global importance and reasons for the top alerts) and `<model>_importance.png`
+
+### Serving predictions
+
+The API serves the latest saved model (XGBoost by default) and returns a decision with reasons.
+
+```bash
+# With Docker (models/ is mounted read-only into the container)
+docker compose up --build
+
+# Or directly
+uvicorn fraud_detection.serving.app:app --reload
+```
+
+No Kaggle file yet? `python scripts/make_demo_model.py` trains a demo model on synthetic data.
+
+```bash
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d @examples/transaction.json
+```
+
+```json
+{
+  "fraud_probability": 0.9999,
+  "decision": "block",
+  "review_threshold": 0.78,
+  "block_threshold": 0.9996,
+  "reasons": [
+    {"feature": "V2", "value": 3.52, "contribution": 4.64},
+    {"feature": "V4", "value": 2.96, "contribution": 3.75},
+    {"feature": "V3", "value": 2.27, "contribution": 2.11}
+  ],
+  "model_name": "xgboost",
+  "model_version": "20261117T202806Z"
+}
+```
+
+Interactive docs: http://localhost:8000/docs. Also available: `GET /health` and `POST /predict/batch` (up to 1,000 transactions). Example output above is from the synthetic demo model.
+
+### Monitoring drift
+
+The Compose setup logs every prediction to `logs/predictions.jsonl`. Compare live traffic with the training data:
+
+```bash
+fraud-monitor --model xgboost --log logs/predictions.jsonl
+```
+
+Without `--log`, the held-out test period stands in for production with delayed labels, so PR-AUC is checked as well:
+
+```bash
+fraud-monitor --model xgboost
+```
+
+The report goes to `reports/monitoring/<model>.json`. PSI below 0.1 is stable, 0.1 to 0.25 moderate, and above 0.25 significant. The command exits with code 1 when it raises an alert, so a scheduler can act on it.
 
 ### Running tests
 
@@ -120,17 +181,32 @@ Held-out test set: the last 20% of transactions in time (56,962 transactions, 75
 
 Reproduce with `fraud-train --config configs/train.yaml` (seed 42).
 
+### Explainability (SHAP, XGBoost)
+
+Global importance on all test frauds plus 500 legitimate test transactions, from `fraud-explain --model xgboost` (exact tree explainer, log-odds):
+
+1. V14 and V4 dominate (mean |SHAP| about 1.7 and 1.6), followed by V12 (1.1) and V10 (0.85).
+2. Amount ranks 9th (about 0.35): transaction size helps, but far less than the leading components.
+3. Time of day is outside the top 15: over two days of data it adds little once other features are known.
+
+Because V1 to V28 are anonymised PCA components, the explanations show which components drive a score but cannot be translated into business terms such as merchant or country. With raw features, the same `top_reasons` output would give analysts directly actionable reasons for each alert.
+
 ## Project structure
 
 ```
 ├── configs/train.yaml          # all training settings
 ├── docs/                       # architecture and ADRs
+├── examples/                   # sample API request
+├── scripts/                    # demo model on synthetic data
+├── Dockerfile, docker-compose.yml
 ├── notebooks/                  # exploration only
 ├── src/fraud_detection/
 │   ├── data/                   # load, validate, time-based split
 │   ├── features/               # preprocessing pipeline
 │   ├── models/                 # model factory and registry
-│   ├── evaluation/             # metrics and cost-based thresholds
+│   ├── evaluation/             # metrics, cost-based thresholds, SHAP
+│   ├── serving/                # FastAPI app and request/response schemas
+│   ├── monitoring/             # PSI drift and the fraud-monitor command
 │   └── pipeline.py             # end-to-end training entry point
 └── tests/                      # pytest suite on synthetic data
 ```
@@ -148,9 +224,9 @@ Reproduce with `fraud-train --config configs/train.yaml` (seed 42).
 - [ ] Widen the SVM search grid (best setting is at the edge)
 - [x] Keras neural network and model comparison
 - [x] SHAP explanations (global and per transaction)
-- [ ] MLflow experiment tracking
-- [ ] Phase 2: FastAPI scoring service, Docker, health checks
-- [ ] Phase 3: prediction logging, drift monitoring, retraining trigger
+- [x] MLflow experiment tracking
+- [x] Phase 2: FastAPI scoring service, Docker, health checks
+- [x] Phase 3: prediction logging, drift monitoring, retraining alert
 
 ## Contributors
 

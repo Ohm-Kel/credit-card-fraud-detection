@@ -13,6 +13,13 @@ All notable changes to this project are documented here. The format follows
 - Keras results in the README
 - SHAP explanations (`fraud-explain`): global importance chart and top reasons per alert
 - Optional `explain` extra and ADR 0007
+- SHAP findings for XGBoost in the README
+- FastAPI scoring service (`/health`, `/predict`, `/predict/batch`) with decisions, thresholds and SHAP reasons
+- Dockerfile, Docker Compose and a CI job that builds the image and scores an example transaction
+- Synthetic demo model script and example request; ADR 0008
+- Prediction logging in the API (`FRAUD_PREDICTION_LOG`), non-fatal on write errors
+- `fraud-monitor`: PSI drift on features and scores, PR-AUC check with delayed labels, exit code 1 on alerts; ADR 0009
+- Optional MLflow tracking (`fraud-train --track`, `tracking` extra): parent run per training, nested run per model; ADR 0010
 
 ## [0.1.0] - 2026-11-17
 

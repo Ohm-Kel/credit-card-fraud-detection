@@ -7,7 +7,10 @@ services:
     environment:
       FRAUD_MODELS_DIR: /app/models
       FRAUD_MODEL_NAME: xgboost
+      FRAUD_PREDICTION_LOG: /app/logs/predictions.jsonl
     volumes:
       # Trained models from `fraud-train` are mounted read-only, not baked into the image
       - ./models:/app/models:ro
+      # Prediction log read by `fraud-monitor --log logs/predictions.jsonl`
+      - ./logs:/app/logs
     restart: unless-stopped

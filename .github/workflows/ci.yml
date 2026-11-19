@@ -55,7 +55,9 @@ jobs:
           pip install -e .
           python scripts/make_demo_model.py
       - name: Build and start the API container
-        run: docker compose up -d --build
+        run: |
+          mkdir -p logs && chmod 777 logs
+          docker compose up -d --build
       - name: Wait for health check
         run: |
           for i in $(seq 1 30); do
@@ -70,6 +72,8 @@ jobs:
             -H "Content-Type: application/json" \
             -d @examples/transaction.json | tee response.json
           python -c "import json; r=json.load(open('response.json')); assert r['decision'] in {'approve','review','block'}; assert len(r['reasons']) == 3"
+      - name: Check the prediction was logged
+        run: test "$(wc -l < logs/predictions.jsonl)" -eq 1
       - name: Stop
         if: always()
         run: docker compose down

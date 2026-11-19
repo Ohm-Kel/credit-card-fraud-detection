@@ -71,6 +71,7 @@ flowchart TB
 | Thresholds | `evaluation/threshold.py` | Cost-optimal review threshold, precision-targeted block threshold |
 | Serving | `serving/app.py`, `serving/schemas.py` | FastAPI scoring with decisions and reasons |
 | Monitoring | `monitoring/drift.py`, `monitoring/cli.py` | PSI drift on features and scores, performance with delayed labels |
+| Tracking | `tracking.py` | Optional MLflow runs with parameters, metrics and artifacts |
 | Orchestration | `pipeline.py` | End-to-end run and reports |
 
 ## Decision policy
@@ -90,7 +91,7 @@ score < review_threshold                     -> approve
 | Phase | Scope | Status |
 |---|---|---|
 | 1 | Validated, reproducible training pipeline, cost-based thresholds, tests, CI | Done |
-| 1b | Keras neural network, SHAP explanations, MLflow tracking | Done except MLflow |
+| 1b | Keras neural network, SHAP explanations, MLflow tracking | Done |
 | 2 | FastAPI scoring service, Pydantic schemas, Docker, health check | Done |
 | 3 | Prediction logging, drift monitoring (PSI), delayed labels, retraining alert | Done |
 
@@ -105,3 +106,4 @@ score < review_threshold                     -> approve
 - [ADR 0007: SHAP explanations](adr/0007-shap.md)
 - [ADR 0008: FastAPI scoring service](adr/0008-scoring-api.md)
 - [ADR 0009: Prediction logging and drift monitoring](adr/0009-monitoring.md)
+- [ADR 0010: MLflow experiment tracking](adr/0010-mlflow-tracking.md)

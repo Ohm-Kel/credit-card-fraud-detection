@@ -23,6 +23,7 @@ Card fraud is rare (about 0.17% of transactions in this dataset) but expensive. 
 - Logistic regression, RBF SVM, XGBoost and a Keras neural network, with class imbalance handled inside each model
 - Cost-based review threshold and precision-targeted block threshold, chosen on validation only
 - Versioned model artifacts with metadata (metrics, thresholds, config, data hash, commit)
+- Optional MLflow tracking: one run per training, nested runs per model with metrics and thresholds
 - SHAP explanations: global feature importance and the top reasons behind each alert
 - FastAPI scoring service in Docker: score, decision, thresholds and top 3 reasons per transaction (p99 latency 15.5 ms)
 - Monitoring: every prediction logged; PSI drift on features and scores, and performance once labels arrive
@@ -46,7 +47,7 @@ Full design, requirements and phases: [docs/architecture.md](docs/architecture.m
 
 ## Tech stack
 
-Python 3.12+, pandas, NumPy, scikit-learn, XGBoost, TensorFlow / Keras, SHAP, FastAPI, Docker, pytest, Ruff, GitHub Actions.
+Python 3.12+, pandas, NumPy, scikit-learn, XGBoost, TensorFlow / Keras, SHAP, FastAPI, Docker, MLflow, pytest, Ruff, GitHub Actions.
 
 ## Getting started
 
@@ -63,7 +64,7 @@ git clone https://github.com/Ohm-Kel/credit-card-fraud-detection.git
 cd credit-card-fraud-detection
 python3.12 -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev,dl,explain,serve]"   # dl = TensorFlow, explain = SHAP, serve = FastAPI
+pip install -e ".[dev,dl,explain,serve,tracking]"   # dl = TensorFlow, explain = SHAP, serve = FastAPI, tracking = MLflow
 pre-commit install
 ```
 
@@ -76,6 +77,8 @@ See `.env.example`. The dataset path can also be set in `configs/train.yaml` or 
 ```bash
 fraud-train --config configs/train.yaml                     # all models
 fraud-train --config configs/train.yaml --models xgboost    # one model
+fraud-train --config configs/train.yaml --track             # also log to MLflow
+mlflow ui --backend-store-uri sqlite:///mlflow.db           # compare runs at localhost:5000
 ```
 
 Explain a trained model (latest saved version) with SHAP:
@@ -221,7 +224,7 @@ Because V1 to V28 are anonymised PCA components, the explanations show which com
 - [ ] Widen the SVM search grid (best setting is at the edge)
 - [x] Keras neural network and model comparison
 - [x] SHAP explanations (global and per transaction)
-- [ ] MLflow experiment tracking
+- [x] MLflow experiment tracking
 - [x] Phase 2: FastAPI scoring service, Docker, health checks
 - [x] Phase 3: prediction logging, drift monitoring, retraining alert
 

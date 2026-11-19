@@ -19,6 +19,7 @@ All notable changes to this project are documented here. The format follows
 - Synthetic demo model script and example request; ADR 0008
 - Prediction logging in the API (`FRAUD_PREDICTION_LOG`), non-fatal on write errors
 - `fraud-monitor`: PSI drift on features and scores, PR-AUC check with delayed labels, exit code 1 on alerts; ADR 0009
+- Optional MLflow tracking (`fraud-train --track`, `tracking` extra): parent run per training, nested run per model; ADR 0010
 
 ## [0.1.0] - 2026-11-17
 

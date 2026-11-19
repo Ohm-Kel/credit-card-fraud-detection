@@ -15,6 +15,10 @@ models/*
 !models/.gitkeep
 reports/*
 !reports/.gitkeep
+logs/
+mlruns/
+mlflow.db
+mlartifacts/
 
 # Environment and OS
 .env

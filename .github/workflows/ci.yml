@@ -37,7 +37,43 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - name: Install with TensorFlow and SHAP
-        run: pip install -e ".[dev,dl,explain]"
-      - name: Test (including Keras model and SHAP explanations)
+      - name: Install all extras (TensorFlow, SHAP, FastAPI, MLflow)
+        run: pip install -e ".[dev,dl,explain,serve,tracking]"
+      - name: Test everything (Keras, SHAP, API, MLflow)
         run: pytest
+
+  docker-smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Train a demo model on synthetic data
+        run: |
+          pip install -e .
+          python scripts/make_demo_model.py
+      - name: Build and start the API container
+        run: |
+          mkdir -p logs && chmod 777 logs
+          docker compose up -d --build
+      - name: Wait for health check
+        run: |
+          for i in $(seq 1 30); do
+            curl -fs http://localhost:8000/health && exit 0
+            sleep 2
+          done
+          docker compose logs
+          exit 1
+      - name: Score the example transaction
+        run: |
+          curl -fs -X POST http://localhost:8000/predict \
+            -H "Content-Type: application/json" \
+            -d @examples/transaction.json | tee response.json
+          python -c "import json; r=json.load(open('response.json')); assert r['decision'] in {'approve','review','block'}; assert len(r['reasons']) == 3"
+      - name: Check the prediction was logged
+        run: test "$(wc -l < logs/predictions.jsonl)" -eq 1
+      - name: Stop
+        if: always()
+        run: docker compose down

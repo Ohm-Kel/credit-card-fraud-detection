@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fraud-detection"
-version = "0.1.0"
+version = "0.2.0"
 description = "End-to-end credit card fraud detection: training pipeline, cost-based decisions and explainability."
 readme = "README.md"
 license = "MIT"
@@ -23,6 +23,13 @@ dependencies = [
 dl = [
     "tensorflow==2.21.0",
 ]
+serve = [
+    "fastapi==0.165.0",
+    "uvicorn==0.54.0",
+]
+tracking = [
+    "mlflow==3.18.0",
+]
 explain = [
     "shap==0.54.1",
     "matplotlib==3.11.2",
@@ -31,12 +38,14 @@ dev = [
     "pytest==9.2.0",
     "pytest-cov==7.1.0",
     "ruff==0.17.5",
+    "httpx==0.28.1",
     "pre-commit>=4.0",
 ]
 
 [project.scripts]
 fraud-train = "fraud_detection.pipeline:main"
 fraud-explain = "fraud_detection.explain_cli:main"
+fraud-monitor = "fraud_detection.monitoring.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/fraud_detection"]

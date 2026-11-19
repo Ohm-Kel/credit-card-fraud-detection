@@ -36,8 +36,9 @@ models:
     negatives_per_positive: 100
     # C and gamma are chosen by validation PR-AUC; the test set is never used for tuning
     grid:
-      C: [0.1, 1.0, 10.0]
-      gamma: [scale, 0.01, 0.001]
+      # Centred on the previous best (C=10, gamma=0.001), which sat at the edge of the old grid
+      C: [1.0, 10.0, 100.0]
+      gamma: [0.01, 0.001, 0.0001]
   xgboost:
     n_estimators: 400
     max_depth: 4

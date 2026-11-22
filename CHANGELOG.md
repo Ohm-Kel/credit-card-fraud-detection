@@ -13,6 +13,12 @@ All notable changes to this project are documented here. The format follows
 - Keras results in the README
 - SHAP explanations (`fraud-explain`): global importance chart and top reasons per alert
 - Optional `explain` extra and ADR 0007
+- ADR 0008
+
+### Changed
+- Widened the SVM `C`/`gamma` search grid; the previous best setting sat at both edges. The new
+  best (`C=300, gamma=0.001`) is an interior point, with a small improvement in test PR-AUC and
+  precision at the same recall
 
 ## [0.1.0] - 2026-11-17
 

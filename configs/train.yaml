@@ -34,10 +34,12 @@ models:
     # RBF SVM scales quadratically, so it trains on all frauds plus a sample of legit
     # transactions; undersampling already rebalances, so no class weights (ADR 0005)
     negatives_per_positive: 100
-    # C and gamma are chosen by validation PR-AUC; the test set is never used for tuning
+    # C and gamma are chosen by validation PR-AUC; the test set is never used for tuning.
+    # Widened beyond the original grid, whose best setting (C=10, gamma=0.001) sat at
+    # both edges; validation PR-AUC plateaus by C=100-300 (see docs/adr/0008-widen-svm-grid.md).
     grid:
-      C: [0.1, 1.0, 10.0]
-      gamma: [scale, 0.01, 0.001]
+      C: [10.0, 30.0, 100.0, 300.0]
+      gamma: [0.001, 0.0005, 0.0003, 0.0001]
   xgboost:
     n_estimators: 400
     max_depth: 4
